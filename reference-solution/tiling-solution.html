@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Marching squares</title>
+        <style>
+            :root {
+                /* Globals (fold me) */
+                --cell-size: 60px;
+                --fill: hsl(142, 90%, 45%);
+
+                button {
+                    background: white;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    padding: 10px 24px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #333;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                    outline: none;
+
+                    &:hover {
+                        background: #fafafa;
+                        border-color: #d0d0d0;
+                        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+                        transform: translateY(-1px);
+                    }
+
+                    &:active {
+                        background: #f5f5f5;
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+                        transform: translateY(0);
+                    }
+
+                    &:focus-visible {
+                        border-color: #999;
+                        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+                    }
+                }
+
+                input[type="checkbox"] {
+                    appearance: none;
+                    width: 16px;
+                    height: 16px;
+                    background: white;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                    z-index: 1;
+                    position: relative;
+
+                    &:hover {
+                        border-color: #d0d0d0;
+                        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+                    }
+                    &:checked {
+                        background: #383;
+                        border-color: #383;
+                        &::after {
+                            content: "";
+                            position: absolute;
+                            left: 4px;
+                            top: 1px;
+                            width: 4px;
+                            height: 8px;
+                            border: solid white;
+                            border-width: 0 2px 2px 0;
+                            transform: rotate(45deg);
+                        }
+                    }
+                    &:focus-visible {
+                        outline: none;
+                        border-color: #999;
+                        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+                    }
+                }
+            }
+
+            .container {
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: start;
+                gap: 20px;
+            }
+            #root {
+                display: grid;
+                width: fit-content;
+
+                input[type="checkbox"] {
+                    z-index: 1;
+                }
+                .cell {
+                    width: var(--cell-size);
+                    height: var(--cell-size);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <template id="cell">
+                <div class="tile"></div>
+
+                <style>
+                    :root {
+                        --draw: var(--fill);
+                        --no-draw: transparent;
+
+                        --sin-45: 0.707106781;
+                        /* https://frontendmasters.com/blog/obsessing-over-smooth-radial-gradient-disc-edges/ */
+                        --circle-ar: calc(100% * var(--sin-45) - 1px);
+                        --circle-r: calc(100% * var(--sin-45));
+                    }
+                    .tile {
+                        width: var(--cell-size);
+                        height: var(--cell-size);
+                        position: absolute;
+
+                        --draw-tl: var(--no-draw);
+                        --draw-tr: var(--no-draw);
+                        --draw-bl: var(--no-draw);
+                        --draw-br: var(--no-draw);
+
+                        --circle-tl: var(--no-draw);
+                    }
+                    .tile::after,
+                    .tile::before {
+                        content: "";
+                        position: absolute;
+                        inset: 0;
+                    }
+                    .tile::after {
+                        transform: translate(-100%, -100%);
+                        border-radius: 100vmax;
+                    }
+                    .tl .tile::after {
+                        background-color: var(--draw);
+                    }
+
+                    .tile::before {
+                        transform: translate(-50%, -50%);
+
+                        background-image:
+                            radial-gradient(
+                                circle at 0% 0%,
+                                transparent,
+                                transparent var(--circle-ar),
+                                var(--draw-tl) var(--circle-r)
+                            ),
+                            radial-gradient(
+                                circle at 100% 0%,
+                                transparent,
+                                transparent var(--circle-ar),
+                                var(--draw-tr) var(--circle-r)
+                            ),
+                            radial-gradient(
+                                circle at 0% 100%,
+                                transparent,
+                                transparent var(--circle-ar),
+                                var(--draw-bl) var(--circle-r)
+                            ),
+                            radial-gradient(
+                                circle at 100% 100%,
+                                transparent,
+                                transparent var(--circle-ar),
+                                var(--draw-br) var(--circle-r)
+                            );
+
+                        background-size: 50% 50%;
+                        background-repeat: no-repeat;
+                        background-position:
+                            0% 0%,
+                            100% 0%,
+                            0% 100%,
+                            100% 100%;
+                    }
+
+                    .tl.tr .tile {
+                        --draw-tl: var(--draw);
+                        --draw-tr: var(--draw);
+                    }
+                    .tr.br .tile {
+                        --draw-tr: var(--draw);
+                        --draw-br: var(--draw);
+                    }
+
+                    .tl.bl .tile {
+                        --draw-tl: var(--draw);
+                        --draw-bl: var(--draw);
+                    }
+
+                    .bl.br .tile {
+                        --draw-bl: var(--draw);
+                        --draw-br: var(--draw);
+                    }
+
+                    :is(
+                        .tl.br /* \ */,
+                        .bl.tr /* / */
+                    ) .tile {
+                        --draw-tl: var(--draw);
+                        --draw-tr: var(--draw);
+                        --draw-bl: var(--draw);
+                        --draw-br: var(--draw);
+                    }
+                </style>
+            </template>
+            <button id="randomize">randomize</button>
+            <div id="root" data-cols="10" data-rows="10"></div>
+        </div>
+
+        <script>
+            const randomizeButton = document.getElementById("randomize");
+            const root = document.getElementById("root");
+            const cols = Number(root.dataset.cols);
+            const rows = Number(root.dataset.rows);
+            root.style.gridTemplateColumns = `repeat(${cols + 1}, 1fr)`;
+            const cellTemplate = document.getElementById("cell");
+
+            for (let j = 0; j < rows + 1; j++) {
+                for (let i = 0; i < cols + 1; i++) {
+                    const cell = document.createElement("div");
+                    cell.classList.add("cell");
+                    cell.dataset.col = i;
+                    cell.dataset.row = j;
+
+                    cell.appendChild(
+                        document.importNode(cellTemplate.content, true),
+                    );
+
+                    if (i !== cols && j !== rows) {
+                        const input = document.createElement("input");
+                        input.type = "checkbox";
+                        cell.appendChild(input);
+                    }
+                    root.appendChild(cell);
+                }
+            }
+
+            function getCell(col, row) {
+                return root.querySelector(
+                    `[data-col="${col}"][data-row="${row}"]`,
+                );
+            }
+
+            function isChecked(col, row) {
+                const cell = getCell(col, row);
+                if (!cell) return false;
+                const checkbox = cell.querySelector('input[type="checkbox"]');
+                return checkbox && checkbox.checked;
+            }
+
+            function updateTileClasses(col, row) {
+                const tileCell = getCell(col, row);
+                if (!tileCell || !tileCell.querySelector(".tile")) return;
+
+                tileCell.classList.remove("tl", "tr", "bl", "br");
+
+                if (isChecked(col - 1, row - 1)) {
+                    tileCell.classList.add("tl");
+                }
+                if (isChecked(col, row - 1)) {
+                    tileCell.classList.add("tr");
+                }
+                if (isChecked(col - 1, row)) {
+                    tileCell.classList.add("bl");
+                }
+                if (isChecked(col, row)) {
+                    tileCell.classList.add("br");
+                }
+            }
+
+            function updateAllTiles() {
+                for (let i = 0; i < cols + 1; i++) {
+                    for (let j = 0; j < rows + 1; j++) {
+                        updateTileClasses(i, j);
+                    }
+                }
+            }
+
+            root.addEventListener("change", (e) => {
+                if (e.target.type === "checkbox") {
+                    updateAllTiles();
+                }
+            });
+
+            updateAllTiles();
+
+            function randomize() {
+                const checkboxes = root.querySelectorAll(
+                    "input[type='checkbox']",
+                );
+                checkboxes.forEach((checkbox) => {
+                    checkbox.checked = Math.random() > 0.5;
+                });
+                updateAllTiles();
+            }
+
+            randomizeButton.addEventListener("click", () => {
+                randomize();
+            });
+
+            randomize();
+        </script>
+    </body>
+</html>
