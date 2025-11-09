@@ -1,6 +1,6 @@
 ### Tiling challenge
 
-Задачка с Yandex Cup 2025 на знание чистого HTML и CSS.
+Задачка с Yandex Cup 2025 на знание чистого HTML + CSS.
 
 Есть доска с клетками
 ![alt](./Pasted_image_20251109190234.png)
